@@ -89,8 +89,9 @@ async def index(request: Request) -> HTMLResponse:
     """Render the single-page form for on-demand video submission."""
     subscribers = load_subscribers()
     return templates.TemplateResponse(
+        request,
         "form.html",
-        {"request": request, "subscribers": subscribers},
+        {"subscribers": subscribers},
     )
 
 
