@@ -1,8 +1,35 @@
 [project]
 name = "youtube-digest"
 version = "1.0.0"
-description = "Automated YouTube video summarizer with email delivery"
+description = "Automatically summarize YouTube videos and deliver email digests using any OpenAI-compatible LLM"
+readme = "README.md"
+license = {text = "MIT"}
 requires-python = ">=3.11"
+authors = [{name = "Andrew Pond"}]
+keywords = [
+    "youtube",
+    "summarizer",
+    "email-digest",
+    "llm",
+    "openai",
+    "transcript",
+    "rss",
+    "automation",
+    "self-hosted",
+    "video-summary",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Communications :: Email",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Text Processing :: General",
+]
 dependencies = [
     "openai>=1.0.0",
     "youtube-transcript-api>=1.0.0",
@@ -16,6 +43,11 @@ dependencies = [
     "uvicorn[standard]>=0.27.0",
     "apscheduler>=3.10.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/apond308/youtube-digest"
+Repository = "https://github.com/apond308/youtube-digest"
+Issues = "https://github.com/apond308/youtube-digest/issues"
 
 [project.scripts]
 youtube-digest = "youtube_digest.__main__:main"

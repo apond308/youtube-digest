@@ -1,6 +1,12 @@
 # YouTube Digest
 
-Automatically summarize new YouTube videos from your favorite channels and deliver them as email digests. Configure the channels you follow, point it at any OpenAI-compatible LLM, and get daily email summaries so you can absorb video content in 5 minutes of reading instead of 20 minutes of watching.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![GitHub stars](https://img.shields.io/github/stars/apond308/youtube-digest)](https://github.com/apond308/youtube-digest/stargazers)
+
+**Automatically summarize YouTube videos and deliver them as email digests.**
+
+Subscribe to your favorite YouTube channels, and get daily email summaries powered by any OpenAI-compatible LLM (OpenAI, local models via Ollama/vLLM/llama.cpp, Anthropic, etc.). Read video content in 5 minutes instead of watching for 20. Self-hosted, privacy-friendly, and fully configurable.
 
 ## Quick Start
 
