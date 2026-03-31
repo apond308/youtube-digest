@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Digest</title>
+    <style>
+        :root {
+            color-scheme: light;
+        }
+        body {
+            margin: 0;
+            padding: 24px;
+            background: #f8f9fa;
+            color: #1a1a1a;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        }
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+            padding: 28px;
+        }
+        h1 {
+            margin: 0 0 8px 0;
+            font-size: 28px;
+        }
+        p.subtitle {
+            margin: 0 0 24px 0;
+            color: #4a4a4a;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        input[type="url"],
+        select {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #d0d7de;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 15px;
+        }
+        button {
+            border: none;
+            border-radius: 8px;
+            background: #cc0000;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            padding: 12px 18px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #9a9a9a;
+            cursor: wait;
+        }
+        .status {
+            margin-top: 18px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+        .status.success {
+            display: block;
+            background: #ebfff1;
+            border: 1px solid #94d3a2;
+            color: #0f5132;
+        }
+        .status.error {
+            display: block;
+            background: #fff0f0;
+            border: 1px solid #ef9a9a;
+            color: #7f1d1d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>YouTube Digest</h1>
+        <p class="subtitle">Submit a YouTube URL and get a summary by email.</p>
+
+        <form id="digest-form">
+            <label for="url">YouTube URL</label>
+            <input
+                id="url"
+                name="url"
+                type="url"
+                required
+                placeholder="https://www.youtube.com/watch?v=..."
+            >
+
+            <label for="subscriber_email">Send summary to</label>
+            <select id="subscriber_email" name="subscriber_email" required>
+                {% for subscriber in subscribers %}
+                <option value="{{ subscriber.email }}">
+                    {{ subscriber.name }} ({{ subscriber.email }})
+                </option>
+                {% endfor %}
+            </select>
+
+            <button id="submit-button" type="submit">Submit for Summary</button>
+        </form>
+
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById("digest-form");
+        const statusBox = document.getElementById("status");
+        const submitButton = document.getElementById("submit-button");
+
+        function setStatus(kind, message) {
+            statusBox.className = "status " + kind;
+            statusBox.textContent = message;
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            submitButton.disabled = true;
+            setStatus("success", "Submitting your request...");
+
+            const payload = {
+                url: document.getElementById("url").value.trim(),
+                subscriber_email: document.getElementById("subscriber_email").value
+            };
+
+            try {
+                const response = await fetch("/api/summarize", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                    redirect: "manual"
+                });
+
+                // Cloudflare Access intercepted the request (session expired or not authed).
+                // Reload the page so the full login flow can complete before retrying.
+                if (response.type === "opaqueredirect" || response.status === 302) {
+                    window.location.reload();
+                    return;
+                }
+
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const detail = data.detail || "Request failed.";
+                    setStatus("error", detail);
+                    return;
+                }
+
+                setStatus("success", data.message || "Queued successfully.");
+                form.reset();
+            } catch (error) {
+                setStatus("error", "Network error. Please try again.");
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

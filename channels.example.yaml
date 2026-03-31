@@ -1,0 +1,26 @@
+# YouTube Digest - Channel Configuration
+#
+# List the YouTube channels you want to follow. Each entry needs:
+#   - id:   The YouTube channel ID (a 24-character string starting with "UC")
+#   - name: A display name (used in emails and subscriber config)
+#
+# HOW TO FIND A CHANNEL ID:
+#   1. Go to the channel's YouTube page
+#   2. View page source (Ctrl+U) and search for "channelId"
+#   3. Or check the URL — some channels show it directly:
+#      https://www.youtube.com/channel/UCxxxxxxxxxxxxxxxxxxxxxx
+#   4. Or use the RSS feed URL to verify:
+#      https://www.youtube.com/feeds/videos.xml?channel_id=CHANNEL_ID
+#
+# You can organize channels into groups with YAML comments for readability.
+
+channels:
+  # Science & Education
+  - id: "UCHnyfMqiRRG1u-2MsSQLbXA"
+    name: "Veritasium"
+  - id: "UCsXVk37bltHxD1rDPwtNM8Q"
+    name: "Kurzgesagt"
+
+  # Tech & Programming
+  - id: "UCsBjURrPoezykLs9EqgamOA"
+    name: "Fireship"

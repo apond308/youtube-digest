@@ -1,0 +1,23 @@
+# YouTube Digest - Subscriber Configuration
+#
+# Each subscriber receives email digests for their chosen channels.
+# Channel names must match exactly with names in channels.yaml.
+#
+# Copy this file to subscribers.yaml and customize:
+#   cp subscribers.example.yaml subscribers.yaml
+
+subscribers:
+  - name: "Your Name"
+    email: "you@gmail.com"
+    max_videos: 5          # max videos per daily digest (0 = unlimited)
+    channels:
+      - "Veritasium"       # must match a name from channels.yaml
+      - "Kurzgesagt"
+      - "Fireship"
+
+  # Add more subscribers:
+  # - name: "Friend"
+  #   email: "friend@example.com"
+  #   max_videos: 3
+  #   channels:
+  #     - "Veritasium"

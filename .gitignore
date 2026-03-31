@@ -1,0 +1,23 @@
+# Environment and credentials
+.env
+
+# User configuration (personal data)
+channels.yaml
+subscribers.yaml
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+
+# Runtime data
+data/state.db
+data/archive/
+data/*.log*
+
+# IDE
+.idea/
+.vscode/
