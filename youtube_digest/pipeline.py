@@ -22,6 +22,8 @@ from .storage.subscribers import load_subscribers
 
 logger = logging.getLogger(__name__)
 
+SHORTS_CHECK_TIMEOUT = 5
+
 _video_cache: dict[str, ProcessedVideo] = {}
 
 
@@ -218,6 +220,11 @@ def _process_subscriber(
         return 0, 0
 
     logger.info("Found %d new video(s)", len(new_videos))
+
+    new_videos = _filter_shorts(new_videos)
+    if not new_videos:
+        logger.info("All new videos were Shorts — nothing to send")
+        return 0, 0
 
     if subscriber.max_videos > 0 and len(new_videos) > subscriber.max_videos:
         logger.info(
@@ -417,6 +424,31 @@ def _send_to_subscriber(
         )
 
     return email_sent
+
+
+def _is_youtube_short(video_id: str) -> bool:
+    """Return True if the video is a YouTube Short (<=60s vertical video)."""
+    try:
+        resp = requests.head(
+            f"https://www.youtube.com/shorts/{video_id}",
+            allow_redirects=False,
+            timeout=SHORTS_CHECK_TIMEOUT,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; YouTubeDigest/1.0)"},
+        )
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
+def _filter_shorts(videos: list[Video]) -> list[Video]:
+    """Remove YouTube Shorts, keeping only full-length videos."""
+    kept: list[Video] = []
+    for video in videos:
+        if _is_youtube_short(video.video_id):
+            logger.info("Skipping Short: %s (%s)", video.title, video.video_url)
+        else:
+            kept.append(video)
+    return kept
 
 
 def _select_with_diversity(

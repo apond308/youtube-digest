@@ -1,6 +1,8 @@
 """LLM-based transcript summarization via an OpenAI-compatible API."""
 
+import json
 import logging
+import re
 from typing import Optional
 
 from openai import AuthenticationError as OpenAIAuthError
@@ -16,9 +18,34 @@ from ..config import (
 
 logger = logging.getLogger(__name__)
 
+_MIN_SUMMARY_LENGTH = 200
+
+_ERROR_PATTERNS = [
+    re.compile(r"^API Error:", re.IGNORECASE),
+    re.compile(r'"type"\s*:\s*"error"'),
+    re.compile(r'"error"\s*:\s*\{'),
+    re.compile(r"not_found_error|invalid_request_error|authentication_error"),
+    re.compile(r"^Error code:\s*\d{3}\b", re.IGNORECASE),
+]
+
 
 class LLMAuthenticationError(Exception):
     """Raised when the LLM API returns a 401 / auth error."""
+
+
+def _looks_like_error(content: str) -> bool:
+    """Return True if content appears to be an API error rather than a real summary."""
+    stripped = content.strip()
+    if any(p.search(stripped) for p in _ERROR_PATTERNS):
+        return True
+    if len(stripped) < _MIN_SUMMARY_LENGTH:
+        try:
+            parsed = json.loads(stripped)
+            if isinstance(parsed, dict) and ("error" in parsed or "type" in parsed):
+                return True
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return False
 
 
 def summarize_transcript(transcript: str, title: str = "") -> Optional[str]:
@@ -48,11 +75,23 @@ def summarize_transcript(transcript: str, title: str = "") -> Optional[str]:
             messages=[{"role": "user", "content": user_prompt}],
         )
 
-        if response.choices and len(response.choices) > 0:
-            return response.choices[0].message.content
+        if not response.choices or len(response.choices) == 0:
+            logger.error("Empty response from API")
+            return None
 
-        logger.error("Empty response from API")
-        return None
+        content = response.choices[0].message.content
+        if not content or not content.strip():
+            logger.error("API returned empty content")
+            return None
+
+        if _looks_like_error(content):
+            logger.error(
+                "API returned an error disguised as content: %s",
+                content[:300],
+            )
+            return None
+
+        return content
 
     except OpenAIAuthError as e:
         logger.error("LLM authentication failed (token expired?): %s", e)
