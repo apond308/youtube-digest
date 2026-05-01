@@ -26,6 +26,7 @@ _ERROR_PATTERNS = [
     re.compile(r'"error"\s*:\s*\{'),
     re.compile(r"not_found_error|invalid_request_error|authentication_error"),
     re.compile(r"^Error code:\s*\d{3}\b", re.IGNORECASE),
+    re.compile(r"\[Request interrupted", re.IGNORECASE),
 ]
 
 
