@@ -49,7 +49,7 @@ youtube-digest run
 
 **On-demand flow:**
 
-1. Open the web UI at `http://localhost:8080`
+1. Open the web UI at `http://localhost:4000`
 2. Paste any YouTube URL and pick a subscriber
 3. Summary is generated in the background and emailed when ready
 
@@ -126,9 +126,9 @@ youtube-digest/
     │   ├── transcript.py      # YouTube transcript retrieval
     │   └── summarizer.py      # LLM summarization
     ├── delivery/
-    │   ├── archive.py         # markdown archive
     │   └── email.py           # Gmail SMTP delivery
     └── storage/
+        ├── archive.py         # markdown archive of summaries
         ├── database.py        # SQLite sent-video tracking
         └── subscribers.py     # subscriber YAML loading
 ```

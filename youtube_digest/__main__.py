@@ -30,7 +30,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Run FastAPI server with scheduler for 24/7 operation.",
     )
     serve_parser.add_argument("--host", default="0.0.0.0", help="Server host.")
-    serve_parser.add_argument("--port", type=int, default=8080, help="Server port.")
+    serve_parser.add_argument("--port", type=int, default=4000, help="Server port.")
     serve_parser.add_argument(
         "--reload",
         action="store_true",

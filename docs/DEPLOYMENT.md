@@ -2,7 +2,7 @@
 
 This guide covers production deployment options beyond the basic `youtube-digest serve` workflow.
 
-## Systemd Service (Linux)
+## Systemd User Service (Linux)
 
 The installer can set this up automatically (`./install.sh` and answer "yes" to the systemd prompt), or you can do it manually:
 
@@ -11,28 +11,29 @@ The installer can set this up automatically (`./install.sh` and answer "yes" to 
 1. Render the service template:
 
 ```bash
-sed -e 's|__RUN_USER__|youruser|g' \
-    -e 's|__WORKING_DIR__|/path/to/youtube-digest|g' \
+mkdir -p ~/.config/systemd/user
+
+sed -e 's|__WORKING_DIR__|/path/to/youtube-digest|g' \
     -e 's|__PYTHON_BIN__|/path/to/youtube-digest/.venv/bin/python|g' \
     -e 's|__SERVER_HOST__|0.0.0.0|g' \
-    -e 's|__SERVER_PORT__|8080|g' \
+    -e 's|__SERVER_PORT__|4000|g' \
     deploy/templates/youtube-digest.service.tpl \
-    | sudo tee /etc/systemd/system/youtube-digest.service
+    > ~/.config/systemd/user/youtube-digest.service
 ```
 
 2. Enable and start:
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now youtube-digest
+systemctl --user daemon-reload
+systemctl --user enable --now youtube-digest
 ```
 
 ### Common Operations
 
 ```bash
-sudo systemctl status youtube-digest      # check status
-sudo systemctl restart youtube-digest     # restart
-sudo journalctl -u youtube-digest -f      # follow logs
+systemctl --user status youtube-digest      # check status
+systemctl --user restart youtube-digest     # restart
+journalctl --user -u youtube-digest -f      # follow logs
 ```
 
 ## Cloudflare Tunnel
@@ -81,7 +82,7 @@ credentials-file: /etc/cloudflared/${TUNNEL_ID}.json
 
 ingress:
   - hostname: youtube.yourdomain.com
-    service: http://127.0.0.1:8080
+    service: http://127.0.0.1:4000
   - service: http_status:404
 EOF
 ```
@@ -106,7 +107,7 @@ server {
     server_name youtube.yourdomain.com;
 
     location / {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:4000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -125,7 +126,7 @@ sudo certbot --nginx -d youtube.yourdomain.com
 
 ```
 youtube.yourdomain.com {
-    reverse_proxy 127.0.0.1:8080
+    reverse_proxy 127.0.0.1:4000
 }
 ```
 
@@ -137,10 +138,10 @@ After deployment, verify everything is working:
 
 ```bash
 # Local health check
-curl -fsS http://127.0.0.1:8080/api/health
+curl -fsS http://127.0.0.1:4000/api/health
 
 # Service status
-sudo systemctl status youtube-digest
+systemctl --user status youtube-digest
 
 # Trigger a test run
 source .venv/bin/activate
@@ -152,13 +153,13 @@ youtube-digest run
 ### Service fails to start
 
 ```bash
-sudo journalctl -u youtube-digest -n 100 --no-pager
+journalctl --user -u youtube-digest -n 100 --no-pager
 ```
 
 Common causes:
 - Missing or invalid `.env` values
 - LLM endpoint not reachable
-- Port already in use: `ss -lntp | grep :8080`
+- Port already in use: `ss -lntp | grep :4000`
 
 ### Emails not sending
 

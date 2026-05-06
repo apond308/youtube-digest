@@ -4,7 +4,6 @@ Coordinates the full workflow: fetch feeds -> process videos -> deliver digests.
 """
 
 import logging
-import re
 from datetime import datetime
 from typing import Optional
 
@@ -13,11 +12,11 @@ import requests
 from .config import CHANNEL_IDS, GMAIL_ADDRESS
 from .models import ProcessedVideo, Subscriber, Video
 from .services.feed import get_recent_videos
-from .services.transcript import get_video_info
+from .services.transcript import extract_video_id, get_video_info
 from .services.summarizer import LLMAuthenticationError, summarize_transcript
 from .delivery.email import send_digest_email, send_error_notification
-from .delivery.archive import archive_summary, get_archived_summary
-from .storage.database import get_sent_video_ids, mark_sent
+from .storage.archive import archive_summary, get_archived_summary
+from .storage.database import get_sent_video_ids, mark_sent, try_claim_video
 from .storage.subscribers import load_subscribers
 
 logger = logging.getLogger(__name__)
@@ -29,6 +28,7 @@ _video_cache: dict[str, ProcessedVideo] = {}
 
 def main() -> int:
     """Run the full digest pipeline.  Returns 0 on success, 1 on errors."""
+    _video_cache.clear()
     logger.info(
         "YouTube Digest started at %s",
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -133,7 +133,7 @@ def _fetch_all_feeds(subscribers: list[Subscriber]) -> list[Video]:
 
 def _build_video_from_url(video_url: str) -> Optional[Video]:
     """Build a minimal Video object for an on-demand request."""
-    video_id = _extract_video_id(video_url)
+    video_id = extract_video_id(video_url)
     if not video_id:
         return None
 
@@ -165,26 +165,6 @@ def _build_video_from_url(video_url: str) -> Optional[Video]:
         published_at=None,
         thumbnail_url=thumbnail_url,
     )
-
-
-def _extract_video_id(url: str) -> Optional[str]:
-    """Extract an 11-character YouTube video ID from URL variants."""
-    match = re.search(r"[?&]v=([a-zA-Z0-9_-]{11})", url)
-    if match:
-        return match.group(1)
-
-    match = re.search(r"youtu\.be/([a-zA-Z0-9_-]{11})", url)
-    if match:
-        return match.group(1)
-
-    match = re.search(r"embed/([a-zA-Z0-9_-]{11})", url)
-    if match:
-        return match.group(1)
-
-    if re.match(r"^[a-zA-Z0-9_-]{11}$", url):
-        return url
-
-    return None
 
 
 def _process_subscriber(
@@ -245,6 +225,10 @@ def _process_subscriber(
                 continue
 
             if processed.status == "no_transcript":
+                if not try_claim_video(video.video_id, subscriber.email):
+                    logger.info("Skipping duplicate (already claimed): %s", video.video_id)
+                    success_count += 1
+                    continue
                 mark_sent(
                     video_id=video.video_id,
                     subscriber_email=subscriber.email,
@@ -382,6 +366,13 @@ def _send_to_subscriber(
 ) -> bool:
     """Send a processed video digest email to a subscriber."""
     video = processed.video
+
+    if not try_claim_video(video.video_id, subscriber.email):
+        logger.warning(
+            "Duplicate send prevented for '%s' → %s", video.title, subscriber.email
+        )
+        return True
+
     logger.info("Sending '%s' to %s...", video.title, subscriber.name)
 
     thumbnail_url = ""

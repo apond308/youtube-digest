@@ -19,6 +19,25 @@ def get_connection() -> sqlite3.Connection:
     return conn
 
 
+def try_claim_video(video_id: str, subscriber_email: str) -> bool:
+    """Atomically claim a video for a subscriber before sending.
+
+    Uses INSERT OR IGNORE so only the first caller across concurrent processes
+    succeeds. Returns True if the claim was acquired, False if already claimed.
+    """
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            INSERT OR IGNORE INTO sent_videos
+            (video_id, subscriber_email, channel_id, channel_name, title, video_url, status)
+            VALUES (?, ?, '', '', '', '', 'pending')
+            """,
+            (video_id, subscriber_email),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
 def mark_sent(
     video_id: str,
     subscriber_email: str,

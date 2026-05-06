@@ -378,29 +378,30 @@ if [[ "$(uname -s)" == "Linux" ]] && command -v systemctl >/dev/null 2>&1; then
 fi
 
 if [[ "${INSTALL_SERVICE}" == "true" ]]; then
-    prompt_default RUN_USER "Linux user to run the service" "${CURRENT_USER}"
     prompt_default SERVER_HOST "Server bind host" "0.0.0.0"
-    prompt_default SERVER_PORT "Server port" "8080"
+    prompt_default SERVER_PORT "Server port" "4000"
+
+    USER_SYSTEMD_DIR="${HOME}/.config/systemd/user"
+    mkdir -p "${USER_SYSTEMD_DIR}"
 
     TMP_SERVICE="$(mktemp)"
     render_template "${TEMPLATE_DIR}/youtube-digest.service.tpl" "${TMP_SERVICE}" \
-        "__RUN_USER__" "${RUN_USER}" \
         "__WORKING_DIR__" "${PROJECT_ROOT}" \
         "__PYTHON_BIN__" "${PYTHON_BIN}" \
         "__SERVER_HOST__" "${SERVER_HOST}" \
         "__SERVER_PORT__" "${SERVER_PORT}"
-    as_root cp "${TMP_SERVICE}" /etc/systemd/system/youtube-digest.service
+    cp "${TMP_SERVICE}" "${USER_SYSTEMD_DIR}/youtube-digest.service"
     rm -f "${TMP_SERVICE}"
-    as_root systemctl daemon-reload
-    as_root systemctl enable --now youtube-digest
-    as_root systemctl restart youtube-digest
-    info "youtube-digest systemd service installed and started."
+    systemctl --user daemon-reload
+    systemctl --user enable --now youtube-digest
+    systemctl --user restart youtube-digest
+    info "youtube-digest user systemd service installed and started."
 
     sleep 2
     if curl -fsS "http://127.0.0.1:${SERVER_PORT}/api/health" >/dev/null 2>&1; then
         info "Health check passed: http://127.0.0.1:${SERVER_PORT}/api/health"
     else
-        warn "Health check failed. Check logs: sudo journalctl -u youtube-digest -f"
+        warn "Health check failed. Check logs: journalctl --user -u youtube-digest -f"
     fi
 fi
 
@@ -429,7 +430,7 @@ if [[ "${SETUP_CLOUDFLARE}" == "true" ]]; then
         as_root apt-get install -y -qq cloudflared
     fi
 
-    [[ -z "${SERVER_PORT:-}" ]] && prompt_default SERVER_PORT "Server port" "8080"
+    [[ -z "${SERVER_PORT:-}" ]] && prompt_default SERVER_PORT "Server port" "4000"
 
     prompt_default BASE_DOMAIN "Base domain (e.g. example.com)" ""
     prompt_default SUBDOMAIN "Subdomain" "youtube"
@@ -494,8 +495,8 @@ info "=== Setup Complete ==="
 printf '\n'
 
 if [[ "${INSTALL_SERVICE}" == "true" ]]; then
-    echo "  Service:  sudo systemctl status youtube-digest"
-    echo "  Logs:     sudo journalctl -u youtube-digest -f"
+    echo "  Service:  systemctl --user status youtube-digest"
+    echo "  Logs:     journalctl --user -u youtube-digest -f"
 else
     echo "  Run the server:"
     echo "    source .venv/bin/activate"

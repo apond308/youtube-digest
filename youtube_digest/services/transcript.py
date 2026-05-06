@@ -28,7 +28,7 @@ def get_video_info(video_url: str, title: str = "") -> Optional[VideoInfo]:
         :class:`VideoInfo` with ``transcript=None`` if no English transcript exists,
         or *None* on temporary/network errors (caller should retry).
     """
-    video_id = _extract_video_id(video_url)
+    video_id = extract_video_id(video_url)
     if not video_id:
         logger.error("Could not extract video ID from: %s", video_url)
         return None
@@ -142,8 +142,8 @@ def _clean_transcript(text: str) -> str:
     return text.strip()
 
 
-def _extract_video_id(url: str) -> Optional[str]:
-    """Extract an 11-character video ID from various YouTube URL formats."""
+def extract_video_id(url: str) -> Optional[str]:
+    """Extract an 11-character YouTube video ID from URL variants."""
     match = re.search(r"[?&]v=([a-zA-Z0-9_-]{11})", url)
     if match:
         return match.group(1)

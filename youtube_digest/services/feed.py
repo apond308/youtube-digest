@@ -3,6 +3,7 @@
 import logging
 import random
 import time
+from datetime import datetime
 from typing import Optional
 
 import feedparser
@@ -84,8 +85,6 @@ def _fetch_feed_xml(rss_url: str) -> str:
 
 def _fetch_channel_feed(channel_id: str, channel_name: str) -> Optional[list[Video]]:
     """Fetch videos from a single channel's RSS feed (with retries)."""
-    from datetime import datetime
-
     rss_url = RSS_URL_TEMPLATE.format(channel_id=channel_id)
 
     for attempt in range(1, MAX_RETRIES + 1):
