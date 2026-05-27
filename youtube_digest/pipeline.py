@@ -4,6 +4,7 @@ Coordinates the full workflow: fetch feeds -> process videos -> deliver digests.
 """
 
 import logging
+import time
 from datetime import datetime
 from typing import Optional
 
@@ -79,22 +80,37 @@ def summarize_single_video(
         )
         return True
 
-    try:
-        processed = _fetch_and_summarize(video)
-    except LLMAuthenticationError:
-        send_error_notification(
-            error_type="LLM Authentication Failed",
-            details="OAuth token has expired. On-demand summary could not be processed.",
-            owner_email=owner,
-            video_title=video.title,
-            video_url=video.video_url,
-        )
-        return False
+    max_attempts = 3
+    processed = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            processed = _fetch_and_summarize(video)
+        except LLMAuthenticationError:
+            send_error_notification(
+                error_type="LLM Authentication Failed",
+                details="OAuth token has expired. On-demand summary could not be processed.",
+                owner_email=owner,
+                video_title=video.title,
+                video_url=video.video_url,
+            )
+            return False
+
+        if processed.status != "error":
+            break
+
+        if attempt < max_attempts:
+            logger.warning(
+                "Attempt %d/%d failed for '%s', retrying in 10s...",
+                attempt, max_attempts, video.title,
+            )
+            time.sleep(10)
+            # Clear cache so _fetch_and_summarize retries from scratch
+            _video_cache.pop(video.video_id, None)
 
     if processed.status == "error":
         send_error_notification(
             error_type="On-Demand Summarization Failed",
-            details=f"Failed to process {video.video_url}",
+            details=f"Failed to process {video.video_url} after {max_attempts} attempts",
             owner_email=owner,
             video_title=video.title,
             video_url=video.video_url,
