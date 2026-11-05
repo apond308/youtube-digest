@@ -14,7 +14,12 @@ from .config import CHANNEL_IDS, GMAIL_ADDRESS
 from .models import ProcessedVideo, Subscriber, Video
 from .services.feed import get_recent_videos
 from .services.transcript import extract_video_id, get_video_info
-from .services.summarizer import LLMAuthenticationError, summarize_transcript
+from .services.summarizer import (
+    LLMAuthenticationError,
+    LLMError,
+    LLMFallbackError,
+    summarize_transcript,
+)
 from .delivery.email import send_digest_email, send_error_notification
 from .storage.archive import archive_summary, get_archived_summary
 from .storage.database import get_sent_video_ids, mark_sent, try_claim_video
@@ -95,6 +100,34 @@ def summarize_single_video(
             )
             return False
 
+        except LLMError as e:
+            if isinstance(e, LLMFallbackError):
+                _send_primary_llm_failure_notification(
+                    owner_email=owner,
+                    video=video,
+                    primary_error=str(e.primary_error),
+                    fallback_model=(
+                        e.backup_error.provider.model
+                        if e.backup_error.provider
+                        else "configured backup"
+                    ),
+                    backup_succeeded=False,
+                )
+            send_error_notification(
+                error_type="LLM Request Failed",
+                details=(
+                    f"{e}\n\nRetrying will not help until the configuration is fixed, "
+                    f"so the remaining attempts were skipped."
+                ),
+                owner_email=owner,
+                video_title=video.title,
+                video_url=video.video_url,
+            )
+            return False
+
+        if processed.status != "error":
+            _notify_primary_llm_failure(processed, owner)
+
         if processed.status != "error":
             break
 
@@ -108,9 +141,13 @@ def summarize_single_video(
             _video_cache.pop(video.video_id, None)
 
     if processed.status == "error":
+        _notify_primary_llm_failure(processed, owner)
+        details = f"Failed to process {video.video_url} after {max_attempts} attempts"
+        if processed.error:
+            details += f"\n\nLast error: {processed.error}"
         send_error_notification(
             error_type="On-Demand Summarization Failed",
-            details=f"Failed to process {video.video_url} after {max_attempts} attempts",
+            details=details,
             owner_email=owner,
             video_title=video.title,
             video_url=video.video_url,
@@ -235,6 +272,7 @@ def _process_subscriber(
     for video in new_videos:
         try:
             processed = _fetch_and_summarize(video)
+            _notify_primary_llm_failure(processed, owner_email)
 
             if processed.status == "error":
                 error_count += 1
@@ -273,6 +311,34 @@ def _process_subscriber(
             send_error_notification(
                 error_type="LLM Authentication Failed",
                 details="OAuth token has expired. The digest run was aborted and all remaining videos will retry next run.",
+                owner_email=owner_email,
+                video_title=video.title,
+                video_url=video.video_url,
+            )
+            break
+
+        except LLMError as e:
+            remaining = len(new_videos) - (success_count + error_count) - 1
+            logger.error("LLM request failed permanently — aborting run: %s", e)
+            error_count += 1
+            if isinstance(e, LLMFallbackError):
+                _send_primary_llm_failure_notification(
+                    owner_email=owner_email,
+                    video=video,
+                    primary_error=str(e.primary_error),
+                    fallback_model=(
+                        e.backup_error.provider.model
+                        if e.backup_error.provider
+                        else "configured backup"
+                    ),
+                    backup_succeeded=False,
+                )
+            send_error_notification(
+                error_type="LLM Request Failed",
+                details=(
+                    f"{e}\n\nThe digest run was aborted; "
+                    f"{remaining + 1} video(s) will retry next run."
+                ),
                 owner_email=owner_email,
                 video_title=video.title,
                 video_url=video.video_url,
@@ -324,6 +390,7 @@ def _fetch_and_summarize(video: Video) -> ProcessedVideo:
             summary=None,
             archive_path=None,
             status="error",
+            error="Could not fetch video info or transcript from YouTube",
         )
 
     if not video_info.transcript:
@@ -342,18 +409,27 @@ def _fetch_and_summarize(video: Video) -> ProcessedVideo:
         "Transcript fetched (%d chars), generating summary...",
         len(video_info.transcript),
     )
-    summary = summarize_transcript(video_info.transcript, video_info.title)
-
-    if not summary:
-        logger.error("Summarization failed for '%s'", video.title)
+    try:
+        summary_result = summarize_transcript(video_info.transcript, video_info.title)
+    except LLMError as e:
+        # Permanent failures (bad model slug, expired auth) propagate so callers
+        # can abort instead of retrying a request that cannot succeed.
+        if e.permanent:
+            raise
+        logger.error("Summarization failed for '%s': %s", video.title, e)
         return ProcessedVideo(
             video=video,
             video_info=video_info,
             summary=None,
             archive_path=None,
             status="error",
+            error=str(e),
+            primary_llm_error=(
+                str(e.primary_error) if isinstance(e, LLMFallbackError) else None
+            ),
         )
 
+    summary = summary_result.content
     logger.info("Summary generated (%d chars), archiving...", len(summary))
     archive_path = archive_summary(
         channel_name=video.channel_name,
@@ -370,9 +446,58 @@ def _fetch_and_summarize(video: Video) -> ProcessedVideo:
         summary=summary,
         archive_path=archive_path,
         status="success",
+        fallback_model=(
+            summary_result.provider.model if summary_result.primary_error else None
+        ),
+        primary_llm_error=(
+            str(summary_result.primary_error) if summary_result.primary_error else None
+        ),
     )
     _video_cache[video.video_id] = result
     return result
+
+
+def _send_primary_llm_failure_notification(
+    owner_email: str,
+    video: Video,
+    primary_error: str,
+    fallback_model: str,
+    backup_succeeded: bool,
+) -> None:
+    """Notify the owner separately whenever the primary provider fails."""
+    fallback_status = (
+        "The backup model succeeded, so summary delivery continued normally."
+        if backup_succeeded
+        else "The backup model was attempted but also failed."
+    )
+    send_error_notification(
+        error_type="Primary LLM Failed — Backup Activated",
+        details=(
+            f"Primary provider error:\n{primary_error}\n\n"
+            f"Backup model: {fallback_model}\n{fallback_status}"
+        ),
+        owner_email=owner_email,
+        video_title=video.title,
+        video_url=video.video_url,
+    )
+
+
+def _notify_primary_llm_failure(
+    processed: ProcessedVideo,
+    owner_email: str,
+) -> None:
+    """Send at most one fallback notification for a processed video."""
+    if not processed.primary_llm_error or processed.fallback_notification_sent:
+        return
+
+    _send_primary_llm_failure_notification(
+        owner_email=owner_email,
+        video=processed.video,
+        primary_error=processed.primary_llm_error,
+        fallback_model=processed.fallback_model or "configured backup",
+        backup_succeeded=processed.status == "success",
+    )
+    processed.fallback_notification_sent = True
 
 
 def _send_to_subscriber(

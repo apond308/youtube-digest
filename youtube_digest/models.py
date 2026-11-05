@@ -36,6 +36,10 @@ class ProcessedVideo:
     summary: Optional[str]
     archive_path: Optional[str]
     status: str  # "success", "no_transcript", "error"
+    error: Optional[str] = None  # failure reason when status == "error"
+    fallback_model: Optional[str] = None
+    primary_llm_error: Optional[str] = None
+    fallback_notification_sent: bool = False
 
 
 @dataclass

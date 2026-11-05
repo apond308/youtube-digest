@@ -55,11 +55,12 @@ youtube-digest run
 
 ## Configuration
 
-All user configuration lives in three files (created by the installer):
+User configuration lives in these files (created by the installer):
 
 | File | Purpose |
 |---|---|
-| `.env` | API keys and credentials |
+| `.env` | Primary/backup API keys and email credentials |
+| `model.yaml` | Primary and backup model names, URLs, and reasoning settings |
 | `channels.yaml` | YouTube channels to follow |
 | `subscribers.yaml` | Email subscribers and their channel preferences |
 
@@ -69,14 +70,19 @@ See [`.env.example`](.env.example), [`channels.example.yaml`](channels.example.y
 
 | Variable | Description | Default |
 |---|---|---|
-| `OPENAI_API_KEY` | API key for your LLM provider | *(required)* |
-| `OPENAI_BASE_URL` | OpenAI-compatible API base URL | `https://api.openai.com/v1` |
-| `MODEL_NAME` | Model to use for summarization | `gpt-4o-mini` |
+| `PRIMARY_LLM_API_KEY` | API key for the primary provider | *(required)* |
+| `BACKUP_LLM_API_KEY` | API key for the fallback provider | *(required for fallback)* |
 | `GMAIL_ADDRESS` | Gmail address for sending digests | *(required)* |
 | `GMAIL_APP_PASSWORD` | Gmail app password ([create one here](https://support.google.com/accounts/answer/185833)) | *(required)* |
 | `MAX_VIDEOS_PER_DAY` | Global max videos per subscriber per run | `0` (no limit) |
 
-Any OpenAI-compatible API works -- OpenAI, local LLMs via llama.cpp/vLLM/Ollama, Anthropic via a proxy, etc.
+Both providers may use any OpenAI-compatible API, and they can use different
+services. If the primary fails, the backup is attempted automatically. The
+owner receives a separate notification explaining the primary failure, while
+the normal summary email is still delivered when the backup succeeds.
+
+`model.yaml` is the single source of truth for provider models, base URLs, and
+reasoning settings. `.env` holds only API keys and email credentials.
 
 ## CLI Reference
 

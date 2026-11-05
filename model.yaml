@@ -1,0 +1,9 @@
+# LLM provider configuration. API keys belong in .env, not this file.
+
+primary:
+  model: nvidia/zai-org/glm-5.2
+  base_url: https://inference-api.nvidia.com/v1
+
+backup:
+  model: qwen:latest-reasoning
+  base_url: https://llama.a-pond.com/v1

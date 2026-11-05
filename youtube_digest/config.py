@@ -6,6 +6,7 @@ Channel configuration is loaded from channels.yaml (see channels.example.yaml).
 
 import logging
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
@@ -26,6 +27,7 @@ TEMPLATES_DIR = PROJECT_ROOT / "templates"
 SUBSCRIBERS_PATH = PROJECT_ROOT / "subscribers.yaml"
 CHANNELS_PATH = PROJECT_ROOT / "channels.yaml"
 CHANNELS_EXAMPLE_PATH = PROJECT_ROOT / "channels.example.yaml"
+MODEL_CONFIG_PATH = PROJECT_ROOT / "model.yaml"
 
 DATA_DIR.mkdir(exist_ok=True)
 ARCHIVE_DIR.mkdir(exist_ok=True)
@@ -33,9 +35,61 @@ ARCHIVE_DIR.mkdir(exist_ok=True)
 # ---------------------------------------------------------------------------
 # LLM API (OpenAI-compatible endpoint)
 # ---------------------------------------------------------------------------
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+
+
+@dataclass(frozen=True)
+class LLMProviderConfig:
+    """Connection settings for one OpenAI-compatible LLM provider."""
+
+    name: str
+    api_key: str
+    base_url: str
+    model: str
+    reasoning_effort: str | None = None
+
+
+def _load_model_config() -> tuple[LLMProviderConfig, LLMProviderConfig | None]:
+    """Load provider definitions from YAML and credentials from the environment."""
+    cfg: dict = {}
+    if MODEL_CONFIG_PATH.exists():
+        try:
+            with open(MODEL_CONFIG_PATH) as f:
+                cfg = yaml.safe_load(f) or {}
+        except Exception as e:
+            logger.error("Error loading model.yaml: %s", e)
+
+    primary_cfg = cfg.get("primary") or {}
+    backup_cfg = cfg.get("backup") or {}
+
+    primary = LLMProviderConfig(
+        name="primary",
+        api_key=os.getenv("PRIMARY_LLM_API_KEY", ""),
+        base_url=primary_cfg.get("base_url", ""),
+        model=primary_cfg.get("model", ""),
+        reasoning_effort=primary_cfg.get("reasoning_effort") or None,
+    )
+
+    backup_model = backup_cfg.get("model", "")
+    backup_url = backup_cfg.get("base_url", "")
+    backup_key = os.getenv("BACKUP_LLM_API_KEY", "")
+    backup = None
+    if backup_model and backup_url and backup_key:
+        backup = LLMProviderConfig(
+            name="backup",
+            api_key=backup_key,
+            base_url=backup_url,
+            model=backup_model,
+            reasoning_effort=backup_cfg.get("reasoning_effort") or None,
+        )
+    elif backup_model or backup_url or backup_key:
+        logger.error(
+            "Backup LLM is partially configured; model, base URL, and API key are all required"
+        )
+
+    return primary, backup
+
+
+PRIMARY_LLM, BACKUP_LLM = _load_model_config()
 MAX_TRANSCRIPT_TOKENS = 300_000
 
 # ---------------------------------------------------------------------------
