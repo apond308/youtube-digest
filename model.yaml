@@ -1,7 +1,7 @@
 # LLM provider configuration. API keys belong in .env, not this file.
 
 primary:
-  model: nvidia/zai-org/glm-5.2
+  model: nvidia/zai-org/glm-5.3
   base_url: https://inference-api.nvidia.com/v1
 
 backup:
