@@ -157,32 +157,26 @@ RSS_URL_TEMPLATE = "https://www.youtube.com/feeds/videos.xml?channel_id={channel
 # ---------------------------------------------------------------------------
 # Summarization prompt
 # ---------------------------------------------------------------------------
-SUMMARY_PROMPT_TEMPLATE = """Summarize the following video transcript into a comprehensive written article.
+SUMMARY_PROMPT_TEMPLATE = """You are writing a digest entry for a reader who subscribes to this channel but won't watch the video. They should come away feeling they watched it.
 
-**Goal:** The reader should absorb the full content in 5-10 minutes of reading instead of watching. They should feel like they watched the video.
+Video: "{title}" — {channel} (published {published})
+Use the spelling of names, products and terms from the title where the auto-captions disagree; otherwise correct obvious caption errors from context.
 
 **Required format — follow this exactly:**
 
-## TL;DR
-2-3 sentences. What is this video about and why does it matter?
-
 ## Summary
-Follow the video's narrative structure chronologically. Write it as the video presents it — if it tells a story, tell that story; if it builds an argument, build that argument; if it explains a process, explain that process.
-
-- Use bullet points where they efficiently convey information (lists, steps, facts)
-- Use prose for narrative flow, context, and explanations
-- Include specific numbers, names, dates, and facts
-- Don't skip sections or gloss over details — be thorough
+Open directly with the substance, never with "This video…" or "The video explores…". Follow the video's own order, in ### sections named for their content (not "Part 1").
+- Interviews/podcasts: name the speaker when attributing claims.
+- Keep concrete detail: numbers, names, dates, quotes worth keeping, steps in a process.
+- Attribute opinions and predictions to the speaker ("Paine argues…"); only state as fact what the video presents as fact.
+- Use bullets for lists, steps and facts; prose for narrative and reasoning.
+- Skip sponsor reads, channel plugs and intro/outro filler.
+- Length scales with content: roughly 1 word of summary per 8-10 words of transcript, minimum 250, maximum 3000.
 
 ## Takeaways
-What should the reader remember? Key insights, implications, or "so what" conclusions.
+3-6 bullets: what to remember or do differently, plus anything the video left unresolved or that deserves a skeptical eye.
 
-**Guidelines:**
-- Aim for 500-3000 words
-- Follow the video's structure chronologically (break it up into multiple sections/themes if needed)
-- Be comprehensive and include all important information.
-- If the transcript has auto-caption errors, interpret the intended meaning
-- If the transcript appears incomplete or cuts off mid-sentence, summarize everything available and add a brief note at the end that the transcript may be incomplete. NEVER ask for the rest of the transcript — always produce the best summary you can with what you have.
+If the transcript is incomplete or cuts off mid-sentence, summarize everything available and add a one-line note at the end. NEVER ask for the rest of the transcript.
 
 ---
 

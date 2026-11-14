@@ -410,7 +410,12 @@ def _fetch_and_summarize(video: Video) -> ProcessedVideo:
         len(video_info.transcript),
     )
     try:
-        summary_result = summarize_transcript(video_info.transcript, video_info.title)
+        summary_result = summarize_transcript(
+            video_info.transcript,
+            video_info.title,
+            video.channel_name,
+            video.published_at.strftime("%Y-%m-%d") if video.published_at else "",
+        )
     except LLMError as e:
         # Permanent failures (bad model slug, expired auth) propagate so callers
         # can abort instead of retrying a request that cannot succeed.

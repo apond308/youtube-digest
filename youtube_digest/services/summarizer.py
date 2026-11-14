@@ -99,6 +99,9 @@ def _looks_like_error(content: str) -> bool:
 def _summarize_with_provider(
     transcript: str,
     provider: LLMProviderConfig,
+    title: str = "",
+    channel: str = "",
+    published: str = "",
 ) -> str:
     """Generate a summary with one provider."""
     try:
@@ -107,7 +110,12 @@ def _summarize_with_provider(
             base_url=provider.base_url,
             default_headers={"User-Agent": "YouTubeDigest/1.0"},
         )
-        user_prompt = SUMMARY_PROMPT_TEMPLATE.format(transcript=transcript)
+        user_prompt = SUMMARY_PROMPT_TEMPLATE.format(
+            transcript=transcript,
+            title=title or "unknown",
+            channel=channel or "unknown",
+            published=published or "unknown",
+        )
 
         logger.debug(
             "API request: provider=%s url=%s model=%s prompt_len=%d",
@@ -161,7 +169,12 @@ def _summarize_with_provider(
         ) from e
 
 
-def summarize_transcript(transcript: str, title: str = "") -> SummarizationResult:
+def summarize_transcript(
+    transcript: str,
+    title: str = "",
+    channel: str = "",
+    published: str = "",
+) -> SummarizationResult:
     """Generate a detailed article-style summary of a video transcript.
 
     Uses the backup provider once when the primary fails. Returns provider
@@ -177,7 +190,9 @@ def summarize_transcript(transcript: str, title: str = "") -> SummarizationResul
 
     primary_failure: LLMError | None = None
     try:
-        content = _summarize_with_provider(transcript, PRIMARY_LLM)
+        content = _summarize_with_provider(
+            transcript, PRIMARY_LLM, title, channel, published
+        )
         return SummarizationResult(content=content, provider=PRIMARY_LLM)
     except LLMError as primary_error:
         logger.error("Primary LLM failed: %s", primary_error)
@@ -193,7 +208,9 @@ def summarize_transcript(transcript: str, title: str = "") -> SummarizationResul
         backup.base_url,
     )
     try:
-        content = _summarize_with_provider(transcript, backup)
+        content = _summarize_with_provider(
+            transcript, backup, title, channel, published
+        )
         return SummarizationResult(
             content=content,
             provider=backup,
