@@ -162,19 +162,16 @@ SUMMARY_PROMPT_TEMPLATE = """You are writing a digest entry for a reader who sub
 Video: "{title}" — {channel} (published {published})
 Use the spelling of names, products and terms from the title where the auto-captions disagree; otherwise correct obvious caption errors from context.
 
-**Required format — follow this exactly:**
+**Format — follow this exactly:**
 
-## Summary
+Write the content only: no "Summary", "TL;DR" or "Takeaways" heading, no intro paragraph describing the video, and NO concluding recap, wrap-up or "key points" at the end. Stop when the video's content ends — never repeat anything already covered.
 Open directly with the substance, never with "This video…" or "The video explores…". Follow the video's own order, in ### sections named for their content (not "Part 1").
 - Interviews/podcasts: name the speaker when attributing claims.
 - Keep concrete detail: numbers, names, dates, quotes worth keeping, steps in a process.
 - Attribute opinions and predictions to the speaker ("Paine argues…"); only state as fact what the video presents as fact.
-- Use bullets for lists, steps and facts; prose for narrative and reasoning.
+- Prefer flowing prose for narrative, reasoning and explanation; use bullets only for genuine lists and steps.
 - Skip sponsor reads, channel plugs and intro/outro filler.
-- Length scales with content: roughly 1 word of summary per 8-10 words of transcript, minimum 250, maximum 3000.
-
-## Takeaways
-3-6 bullets: what to remember or do differently, plus anything the video left unresolved or that deserves a skeptical eye.
+- Length scales with content: be thorough and comprehensive. Cover every topic, example, argument and fact in the video, not just the headlines. Aim for roughly 40-60% of the transcript's length, up to a maximum of 3000 words. Only a genuinely short clip should get a short write-up; never pad.
 
 If the transcript is incomplete or cuts off mid-sentence, summarize everything available and add a one-line note at the end. NEVER ask for the rest of the transcript.
 
