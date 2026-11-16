@@ -6,4 +6,4 @@ primary:
 
 backup:
   model: qwen:latest-reasoning
-  base_url: https://llama.a-pond.com/v1
+  base_url: https://api.a-pond.com/v1
