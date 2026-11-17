@@ -5,5 +5,5 @@ primary:
   base_url: https://inference-api.nvidia.com/v1
 
 backup:
-  model: qwen:latest-reasoning
+  model: qwen:latest:thinking
   base_url: https://api.a-pond.com/v1
